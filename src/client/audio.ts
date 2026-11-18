@@ -54,7 +54,7 @@ export function createSoundEffects() {
     // Creating/resuming the audio context is triggered directly by a player's tap.
     const pending = (async () => {
       try {
-        preferPlaybackSession(navigator);
+        preferPlaybackSession(navigator as Navigator & { audioSession?: { type: string } });
         const audioContext = context ?? new AudioContext();
         context = audioContext;
         await audioContext.resume();
@@ -106,7 +106,7 @@ export function createSoundEffects() {
 
   function resumeOnGesture() {
     if (!enabled) return;
-    preferPlaybackSession(navigator);
+    preferPlaybackSession(navigator as Navigator & { audioSession?: { type: string } });
     if (context && context.state !== 'running') void context.resume().catch(() => {});
   }
 
