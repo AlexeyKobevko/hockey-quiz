@@ -44,6 +44,10 @@ try {
     '/assets/dynamo.png',
     '/assets/rink-bg.webp',
     '/assets/hero-hockey-rivals.webp',
+    '/audio/period-start.mp3',
+    '/audio/puck-hit.mp3',
+    '/audio/period-end.mp3',
+    '/audio/final-horn.mp3',
   ])
     assert.equal((await fetch(base + resource)).status, 200);
   for (const resource of [

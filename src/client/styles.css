@@ -834,7 +834,25 @@ h3 {
 }
 .room-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+}
+.roombar .audio-control {
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #b9e4ff6b;
+  border-radius: 999px;
+  background: #17476dc9;
+  color: #e7f6ff;
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+}
+.roombar .audio-control[aria-pressed='true'] {
+  background: #174f45d9;
+  border-color: #9be5cc99;
+  color: #d9fff0;
 }
 .roombar button {
   min-height: 44px;
