@@ -132,6 +132,7 @@ export function createGameServer(options: Options = {}) {
         '.webp': 'image/webp',
         '.ico': 'image/x-icon',
         '.woff2': 'font/woff2',
+        '.mp3': 'audio/mpeg',
       };
       const type = types[path.extname(filename)];
       if (!type) {
