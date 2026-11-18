@@ -1,0 +1,46 @@
+# Локальные инструменты и OpenSpec
+/.agents/
+/openspec/
+/.codex/
+
+# Зависимости, сборка и кеши
+node_modules/
+/dist/
+/build/
+.cache/
+.vite/
+*.tsbuildinfo
+
+# Локальное окружение; шаблон можно хранить в репозитории
+.env
+.env.*
+!.env.example
+
+# Результаты тестов
+/coverage/
+/.nyc_output/
+/playwright-report/
+/test-results/
+/blob-report/
+
+# Журналы и временные файлы
+*.log
+*.pid
+*.pid.lock
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# Настройки редакторов и файлы ОС
+/.idea/
+/.vscode/
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+
+# Локальный архив истории и резервных копий; актуальные шаблоны — deploy/.
+/.local-archive/

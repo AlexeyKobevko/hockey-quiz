@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a1b30" />
+    <meta
+      name="description"
+      content="Судья, ты чего?! — хоккейная мультиплеерная викторина перед дерби «Динамо» — ЦСКА"
+    />
+    <title>Судья, ты чего?! — хоккейный баттл</title>
+    <link rel="preload" href="/assets/rink-bg.webp" as="image" type="image/webp" />
+    <link rel="preload" href="/assets/hero-hockey-rivals.webp" as="image" type="image/webp" />
+  </head>
+  <body>
+    <div class="rink-backdrop" aria-hidden="true"></div>
+    <div class="wrap">
+      <header class="hero-header glass" aria-labelledby="hero-title">
+        <p class="hero-kicker">МОСКОВСКОЕ ДЕРБИ · 22 НОЯБРЯ</p>
+        <div class="hero-copy">
+          <h1 class="hero-title" id="hero-title" aria-label="Судья, ты чего?!">
+            <span>Судья,</span><span>ты чего?!</span>
+          </h1>
+          <div class="hero-slash" aria-hidden="true"></div>
+          <p class="hero-subtitle">ХОККЕЙНЫЙ КВИЗ</p>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <img
+            src="/assets/hero-hockey-rivals.webp"
+            width="668"
+            height="350"
+            alt=""
+            fetchpriority="high"
+            decoding="async"
+          />
+        </div>
+      </header>
+      <nav class="nav" aria-label="Разделы">
+        <button data-tab="game" class="selected">🏒 Игра</button
+        ><button data-tab="bingo">🎯 Бинго</button><button data-tab="rules">📖 Правила</button>
+      </nav>
+      <div class="roombar" id="roomBar" hidden>
+        <span id="roomInfo"></span>
+        <div class="room-actions">
+          <button id="closeRoom" data-action="close" type="button" hidden>Закрыть комнату</button
+          ><button data-action="leave" type="button">Забыть участие</button>
+        </div>
+      </div>
+      <main id="app" aria-live="polite">
+        <div class="status-row" id="statusRow">
+          <div class="live" id="status" role="status">
+            <i aria-hidden="true"></i><span>Готовы к игре</span>
+          </div>
+        </div>
+      </main>
+      <footer class="footer">
+        Фанатская неофициальная игра · «Динамо» — ЦСКА<br />22 ноября 2026 · ВТБ Арена<br />Эмблемы
+        принадлежат своим правообладателям. Проект не связан с клубами и КХЛ.
+      </footer>
+    </div>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

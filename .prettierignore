@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.local-archive/
+openspec/
+.agents/
+coverage/
+playwright-report/
+test-results/

@@ -1,0 +1,5 @@
+{$SITE_DOMAIN} {
+    reverse_proxy 127.0.0.1:{$QUIZ_PORT:3707} {
+        flush_interval -1
+    }
+}
