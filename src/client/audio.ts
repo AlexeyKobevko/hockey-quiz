@@ -1,5 +1,14 @@
 import type { SoundCue } from './audio-events.js';
 
+/** On iOS WebKit, the default audio session can be muted by Silent Mode. */
+export function preferPlaybackSession(target: { audioSession?: { type: string } }) {
+  try {
+    if (target.audioSession) target.audioSession.type = 'playback';
+  } catch {
+    // Browsers without a configurable AudioSession can still use Web Audio.
+  }
+}
+
 const files: ReadonlyArray<readonly [SoundCue, string]> = [
   ['period-start', '/audio/period-start.mp3'],
   ['puck-hit', '/audio/puck-hit.mp3'],
@@ -45,6 +54,7 @@ export function createSoundEffects() {
     // Creating/resuming the audio context is triggered directly by a player's tap.
     const pending = (async () => {
       try {
+        preferPlaybackSession(navigator);
         const audioContext = context ?? new AudioContext();
         context = audioContext;
         await audioContext.resume();
@@ -57,6 +67,8 @@ export function createSoundEffects() {
           }),
         );
         buffers = new Map(decoded);
+        if (audioContext.state !== 'running') await audioContext.resume();
+        if (audioContext.state !== 'running') throw new Error('Audio context did not start');
         enabled = true;
         return true;
       } catch {
@@ -93,7 +105,9 @@ export function createSoundEffects() {
   }
 
   function resumeOnGesture() {
-    if (enabled && context?.state === 'suspended') void context.resume().catch(() => {});
+    if (!enabled) return;
+    preferPlaybackSession(navigator);
+    if (context && context.state !== 'running') void context.resume().catch(() => {});
   }
 
   return { enable, disable, stop, play, resumeOnGesture, get enabled() { return enabled; } };
