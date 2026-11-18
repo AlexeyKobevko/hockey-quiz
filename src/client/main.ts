@@ -3,6 +3,8 @@ import type { Endpoint, GameSnapshot, Session, VisualChoice } from '../shared/co
 import { isSession } from '../shared/validation.js';
 import { HttpError, post } from './api.js';
 import { createSessionStore } from './session.js';
+import { createSoundEffects } from './audio.js';
+import { cueForTransition } from './audio-events.js';
 import { createSync } from './sync.js';
 import { renderView, roomLink } from './views.js';
 import type { Tab } from './views.js';
@@ -16,7 +18,9 @@ const app = element('#app'),
   statusRow = element('#statusRow'),
   roomBar = element('#roomBar'),
   roomInfo = element('#roomInfo'),
-  closeRoom = element('#closeRoom');
+  closeRoom = element('#closeRoom'),
+  audioToggle = element('#audioToggle');
+const soundEffects = createSoundEffects();
 const store = createSessionStore(
   import.meta.env.DEV,
   location.search,
@@ -70,6 +74,9 @@ function render() {
   }
   roomBar.hidden = !auth;
   closeRoom.hidden = auth?.role !== 'host';
+  audioToggle.hidden = auth?.role !== 'player';
+  audioToggle.setAttribute('aria-pressed', String(soundEffects.enabled));
+  audioToggle.textContent = soundEffects.enabled ? '🔊 Звук включён' : '🔇 Включить звук';
   roomInfo.textContent = auth
     ? `${auth.role === 'host' ? '🎤 Ведущий' : '🏒 Участница'} · ${auth.code}`
     : '';
@@ -100,6 +107,7 @@ function render() {
   lastScores = new Map((state?.players ?? []).map((p) => [p.id, p.score]));
 }
 function forget(message = '') {
+  soundEffects.disable();
   sync.stop();
   activeRequest?.abort();
   auth = null;
@@ -122,10 +130,12 @@ const sync = createSync({
   state: (next) => {
     if (state && next.code === state.code && next.version < state.version) return;
     const oldIndex = state?.index,
-      oldPhase = state?.phase;
+      oldPhase = state?.phase,
+      cue = cueForTransition(state, next);
     state = next;
     syncError = '';
     render();
+    if (cue) soundEffects.play(cue);
     if (
       oldIndex !== undefined &&
       (oldIndex !== next.index || oldPhase !== next.phase) &&
@@ -176,6 +186,7 @@ async function request(endpoint: Endpoint, data: Record<string, unknown> = {}) {
   }
 }
 function enterSession(value: Session) {
+  soundEffects.disable();
   sync.stop();
   auth = value;
   state = null;
@@ -186,6 +197,14 @@ function enterSession(value: Session) {
   void sync.connect();
 }
 async function act(action: string) {
+  if (action === 'audio') {
+    if (auth?.role !== 'player') return;
+    if (soundEffects.enabled) soundEffects.disable();
+    else if (!(await soundEffects.enable()))
+      err = 'Не удалось включить звук. Проверь подключение и настройки браузера.';
+    render();
+    return;
+  }
   if (action === 'rules' || action === 'game' || action === 'bingo') {
     tab = action;
     render();
@@ -260,6 +279,7 @@ async function click(event: MouseEvent) {
   const target = event.target,
     button = target instanceof Element ? target.closest('button') : null;
   if (!(button instanceof HTMLButtonElement) || button.disabled) return;
+  soundEffects.resumeOnGesture();
   if (button.dataset.kick) {
     if (confirm('Освободить слот этой участницы? Её прежний доступ перестанет работать.'))
       await request('kick', { playerId: button.dataset.kick });
@@ -322,6 +342,7 @@ window.addEventListener('pageshow', () => {
   if (auth && !sync.active) void sync.connect();
 });
 window.addEventListener('pagehide', () => {
+  soundEffects.stop();
   sync.stop();
   clearTimeout(glassScrollTimer);
 });
@@ -334,6 +355,7 @@ window.addEventListener('offline', () => {
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
+    soundEffects.stop();
     sync.stop();
     setStatus(false);
   } else if (auth) void sync.connect();
