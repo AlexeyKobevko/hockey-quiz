@@ -71,6 +71,15 @@ void test('Звуки живых переходов: старт периода, 
   assert.equal(cueForTransition(scene('reveal', 17, 50), scene('finished', 18, 51)), 'final-horn');
 });
 
+void test('Сирена и свисток не теряются, если SSE пропустил промежуточный снимок', () => {
+  assert.equal(cueForTransition(scene('question', 5, 16), scene('break', 6, 18)), 'period-end');
+  assert.equal(cueForTransition(scene('reveal', 5, 17), scene('question', 6, 19)), 'period-start');
+  assert.equal(cueForTransition(scene('question', 11, 40), scene('break', 12, 42)), 'period-end');
+  assert.equal(cueForTransition(scene('reveal', 17, 62), scene('finished', 18, 64)), 'final-horn');
+  assert.equal(cueForTransition(scene('break', 6, 18), scene('break', 6, 19)), null);
+  assert.equal(cueForTransition(scene('break', 6, 18), scene('question', 7, 20)), null);
+});
+
 void test('Ведущий, первая загрузка, дубли, переподключения и новая партия не звучат', () => {
   const reveal = scene('reveal', 0, 4, { correct: true });
   assert.equal(cueForTransition(null, reveal), null);

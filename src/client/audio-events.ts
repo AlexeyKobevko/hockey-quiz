@@ -17,12 +17,18 @@ export function cueForTransition(
   )
     return null;
 
-  if (previous.phase === 'reveal' && next.phase === 'finished' && next.index === next.total)
+  if (
+    next.phase === 'finished' &&
+    previous.phase !== 'finished' &&
+    previous.index < next.index &&
+    next.index === next.total
+  )
     return 'final-horn';
 
   if (
-    previous.phase === 'reveal' &&
     next.phase === 'break' &&
+    previous.phase !== 'break' &&
+    (next.index === 6 || next.index === 12) &&
     next.index === previous.index + 1
   )
     return 'period-end';
@@ -39,7 +45,11 @@ export function cueForTransition(
   if (
     next.phase === 'question' &&
     ((previous.phase === 'lobby' && next.index === 0) ||
-      (previous.phase === 'break' && next.index === previous.index))
+      (previous.phase === 'break' && next.index === previous.index) ||
+      // A lost SSE update can skip the break snapshot altogether.
+      ((next.index === 6 || next.index === 12) &&
+        previous.phase === 'reveal' &&
+        previous.index === next.index - 1))
   )
     return 'period-start';
 

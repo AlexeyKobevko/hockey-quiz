@@ -19,7 +19,10 @@ const app = element('#app'),
   roomBar = element('#roomBar'),
   roomInfo = element('#roomInfo'),
   closeRoom = element('#closeRoom'),
-  audioToggle = element('#audioToggle');
+  audioToggle = element('#audioToggle'),
+  audioDebugPanel = element('#audioDebugPanel'),
+  audioDebugStatus = element('#audioDebugStatus');
+const audioDebugMode = new URLSearchParams(location.search).get('audioDebug') === '1';
 const soundEffects = createSoundEffects();
 const store = createSessionStore(
   import.meta.env.DEV,
@@ -75,6 +78,7 @@ function render() {
   roomBar.hidden = !auth;
   closeRoom.hidden = auth?.role !== 'host';
   audioToggle.hidden = auth?.role !== 'player';
+  audioDebugPanel.hidden = !(audioDebugMode && auth?.role === 'player');
   audioToggle.setAttribute('aria-pressed', String(soundEffects.enabled));
   audioToggle.textContent = soundEffects.enabled ? '🔊 Звук включён' : '🔇 Включить звук';
   roomInfo.textContent = auth
@@ -135,7 +139,18 @@ const sync = createSync({
     state = next;
     syncError = '';
     render();
-    if (cue) soundEffects.play(cue);
+    if (audioDebugMode && next.role === 'player') {
+      audioDebugStatus.textContent =
+        `v${next.version} ${oldPhase ?? '?'}[${oldIndex ?? '-'}] → ${next.phase}[${next.index}]; ` +
+        `cue: ${cue ?? 'нет'}; AudioContext: ${soundEffects.contextState}`;
+    }
+    if (cue) {
+      void soundEffects.play(cue).then((result) => {
+        if (audioDebugMode && next.role === 'player')
+          audioDebugStatus.textContent =
+            `${cue}: ${result} (не гарантирует слышимый звук); AudioContext: ${soundEffects.contextState}`;
+      });
+    }
     if (
       oldIndex !== undefined &&
       (oldIndex !== next.index || oldPhase !== next.phase) &&
@@ -197,10 +212,22 @@ function enterSession(value: Session) {
   void sync.connect();
 }
 async function act(action: string) {
+  if (action === 'audio-test-siren' || action === 'audio-test-whistle') {
+    if (!audioDebugMode || auth?.role !== 'player') return;
+    const cue = action === 'audio-test-siren' ? 'period-end' : 'period-start';
+    const result = await soundEffects.play(cue);
+    audioDebugStatus.textContent =
+      `${cue}: ${result}; AudioContext: ${soundEffects.contextState}`;
+    return;
+  }
   if (action === 'audio') {
     if (auth?.role !== 'player') return;
     if (soundEffects.enabled) soundEffects.disable();
-    else if (await soundEffects.enable()) soundEffects.play('puck-hit');
+    else if (await soundEffects.enable()) {
+      const result = await soundEffects.play('puck-hit');
+      if (audioDebugMode)
+        audioDebugStatus.textContent = `puck-hit: ${result}; AudioContext: ${soundEffects.contextState}`;
+    }
     else err = 'Не удалось включить звук. Проверь подключение и настройки браузера.';
     render();
     return;
