@@ -1406,3 +1406,62 @@ body.is-scrolling .hero-header {
     padding: 8px 5px;
   }
 }
+
+/* Award cards belong to the results screens; they never change the scoreboard. */
+.prize-card {
+  position: relative;
+  margin: 18px 0;
+  padding: 18px 15px;
+  border: 1px solid #b9dfff88;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #184467ef, #0e2a48f2);
+  box-shadow: inset 0 1px 0 #e4f5ff33, 0 7px 20px #0004;
+  text-align: center;
+}
+.prize-card h3 {
+  margin: 0 0 9px;
+  color: #f3faff;
+  font-size: clamp(16px, 4.4vw, 21px);
+}
+.prize-card p {
+  margin: 0;
+  color: #dceeff;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.prize-card.prize-winner,
+.prize-card.prize-tie {
+  border-color: #f6d88b99;
+  background: linear-gradient(145deg, #37405ae8, #133c5bec);
+}
+.prize-results {
+  margin: 24px 0 18px;
+}
+.prize-results .eyebrow {
+  margin-bottom: 12px;
+}
+.prize-host-row {
+  min-width: 0;
+  margin-top: 14px;
+  text-align: left;
+}
+.prize-host-row > strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.prize-host-row .prize-card {
+  margin: 7px 0 0;
+}
+.prize-teaser {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #f0d9937a;
+  border-radius: 14px;
+  background: #183753e8;
+  color: #f4e9c3 !important;
+  font-weight: 800;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+}

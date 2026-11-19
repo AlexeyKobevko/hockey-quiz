@@ -63,8 +63,15 @@ test('Три телефона: полный матч, замена, reconnect, �
     }
     await expect(a.locator('.podium')).toHaveText('0 : 18');
     await expect(b.locator('.podium')).toHaveText('0 : 18');
+    await expect(a.locator('.victory .prize-card')).toContainText('Твоя хоккейная миссия');
+    await expect(a.locator('.victory .prize-card')).toContainText('Красно-синий — самый сильный!');
+    await expect(b.locator('.victory .prize-card')).toContainText('Ты победила в квизе');
+    await expect(b.locator('.victory .prize-card')).toContainText('угощение');
+    await expect(h.page.locator('.victory .prize-host-row')).toHaveCount(2);
     await a.locator('[data-tab=bingo]').click();
     await b.locator('[data-tab=bingo]').click();
+    await expect(a.locator('.prize-teaser')).toContainText('СЕКРЕТНЫЙ ПРИЗ');
+    await expect(a.locator('.prize-teaser')).not.toContainText('банкнота');
     await a.locator('[data-mission="0"]').click();
     await expect(a.locator('.mission.done')).toHaveCount(1);
     await expect(b.locator('.mission.done')).toHaveCount(0);
@@ -75,6 +82,9 @@ test('Три телефона: полный матч, замена, reconnect, �
     await expect(a.locator('.mission:disabled')).toHaveCount(8);
     await expect(b.locator('.mission:disabled')).toHaveCount(8);
     await expect(h.page.locator('.feedback')).toContainText('победительница бинго');
+    await expect(a.locator('.prize-card')).toContainText('СЕКРЕТНЫЙ ПРИЗ РАЗБЛОКИРОВАН');
+    await expect(b.locator('.prize-card')).toContainText('трофей достался сопернице');
+    await expect(h.page.locator('.prize-results .note')).toContainText('коллекционную банкноту ЦСКА');
     await a.reload();
     await ready(a);
     await a.locator('[data-tab=bingo]').click();
