@@ -23,6 +23,7 @@ function scene(
     missions: [],
     rules: [],
     roundComplete: phase === 'break' ? index : null,
+    bingoClosed: false,
   };
   const player: PublicPlayer = {
     id: 'p1',
