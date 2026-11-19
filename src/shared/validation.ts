@@ -72,6 +72,7 @@ export function isEndpoint(value: string): value is Endpoint {
     'restart',
     'kick',
     'close',
+    'finish-bingo',
     'answer',
     'bingo',
   ].includes(value);
@@ -171,6 +172,7 @@ export function isSnapshot(value: unknown): value is GameSnapshot {
     !isInteger(value.version) ||
     !isInteger(value.index, 0, 18) ||
     value.total !== 18 ||
+    typeof value.bingoClosed !== 'boolean' ||
     !isBingo(value.bingo)
   )
     return false;
@@ -198,6 +200,7 @@ export function isSnapshot(value: unknown): value is GameSnapshot {
   )
     return false;
   if ('token' in value || 'hostToken' in value) return false;
+  if (value.bingoClosed && value.phase !== 'finished') return false;
   const players = value.players;
   const hiddenPlayers = () =>
     players.every((p: unknown) => isRecord(p) && !('answer' in p) && !('correct' in p));
