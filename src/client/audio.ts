@@ -23,12 +23,16 @@ const volumes: Record<SoundCue, number> = {
 };
 
 /** Audio is opt-in and deliberately not persisted: iOS requires a fresh gesture after reload. */
+export type PlaybackResult = 'started' | 'disabled' | 'background' | 'missing-buffer' | 'interrupted' | 'error';
+
 export function createSoundEffects() {
   let context: AudioContext | null = null;
   let current: AudioBufferSourceNode | null = null;
   let enabled = false;
   let loading: Promise<boolean> | null = null;
   let buffers = new Map<SoundCue, AudioBuffer>();
+  let playSequence = 0;
+  let lastResult: PlaybackResult | null = null;
 
   function stop() {
     if (!current) return;
@@ -45,6 +49,7 @@ export function createSoundEffects() {
 
   function disable() {
     enabled = false;
+    playSequence++;
     stop();
   }
 
@@ -84,24 +89,55 @@ export function createSoundEffects() {
     }
   }
 
-  function play(cue: SoundCue) {
-    if (!enabled || document.hidden || context?.state !== 'running') return;
-    const buffer = buffers.get(cue);
-    if (!buffer) return;
-    stop(); // Only one sound at a time, never overlapping cues.
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    source.buffer = buffer;
-    gain.gain.value = volumes[cue];
-    source.connect(gain);
-    gain.connect(context.destination);
-    source.onended = () => {
-      if (current === source) current = null;
-      source.disconnect();
-      gain.disconnect();
+  async function play(cue: SoundCue): Promise<PlaybackResult> {
+    const sequence = ++playSequence;
+    const result = (value: PlaybackResult) => {
+      lastResult = value;
+      return value;
     };
-    current = source;
-    source.start();
+    if (!enabled || !context) return result('disabled');
+    if (document.hidden) return result('background');
+    const audioContext = context;
+    const buffer = buffers.get(cue);
+    if (!buffer) return result('missing-buffer');
+
+    // iOS can interrupt a previously unlocked AudioContext after a brief pause,
+    // tab switch, notification, or media session handover. Never silently drop
+    // period sounds just because the context is no longer "running".
+    if (audioContext.state !== 'running') {
+      preferPlaybackSession(navigator as Navigator & { audioSession?: { type: string } });
+      try {
+        // Some versions of WebKit never settle resume() while interrupted.
+        // Bound the wait, so a missing device/audio session cannot hang the UI.
+        await Promise.race([
+          audioContext.resume(),
+          new Promise<void>((resolve) => setTimeout(resolve, 1200)),
+        ]);
+      } catch {
+        return result('interrupted');
+      }
+    }
+    if (sequence !== playSequence || !enabled || document.hidden) return result('disabled');
+    if (audioContext.state !== 'running') return result('interrupted');
+    try {
+      stop(); // One sound at a time. A later cue takes precedence.
+      const source = audioContext.createBufferSource();
+      const gain = audioContext.createGain();
+      source.buffer = buffer;
+      gain.gain.value = volumes[cue];
+      source.connect(gain);
+      gain.connect(audioContext.destination);
+      source.onended = () => {
+        if (current === source) current = null;
+        source.disconnect();
+        gain.disconnect();
+      };
+      current = source;
+      source.start();
+      return result('started');
+    } catch {
+      return result('error');
+    }
   }
 
   function resumeOnGesture() {
@@ -110,5 +146,14 @@ export function createSoundEffects() {
     if (context && context.state !== 'running') void context.resume().catch(() => {});
   }
 
-  return { enable, disable, stop, play, resumeOnGesture, get enabled() { return enabled; } };
+  return {
+    enable,
+    disable,
+    stop,
+    play,
+    resumeOnGesture,
+    get enabled() { return enabled; },
+    get contextState() { return context?.state ?? 'not-created'; },
+    get lastResult() { return lastResult; },
+  };
 }
