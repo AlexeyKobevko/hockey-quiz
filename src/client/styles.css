@@ -1331,3 +1331,78 @@ body.is-scrolling .hero-header {
     background: linear-gradient(112deg, #092346, #143f6a 70%, #406c94);
   }
 }
+
+/* Host's compact live bingo scoreboard, including narrow mobile viewports. */
+.bingo-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 13px 0 18px;
+}
+.bingo-total {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border-radius: 13px;
+  border: 1px solid #aacbe945;
+  background: #102d4fe6;
+}
+.bingo-total strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.bingo-total span {
+  font-weight: 850;
+  font-size: 23px;
+  color: #b3dfff;
+  font-variant-numeric: tabular-nums;
+}
+.bingo-host-grid {
+  margin-top: 12px;
+  border: 1px solid #aacbe945;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.bingo-host-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 65px 65px;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 8px;
+  background: #0c2742b8;
+  border-bottom: 1px solid #aacbe925;
+  font-size: 12px;
+}
+.bingo-host-row:last-child {
+  border-bottom: 0;
+}
+.bingo-host-heading {
+  background: #163b61e6;
+  font-weight: 800;
+  color: #d8eeff;
+  font-size: 10px;
+}
+.bingo-host-heading span {
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.bingo-host-heading span:first-child {
+  text-align: left;
+}
+.bingo-host-task {
+  overflow-wrap: anywhere;
+}
+.bingo-host-mark {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 850;
+  color: #a1efc7;
+}
+@media (max-width: 360px) {
+  .bingo-host-row {
+    grid-template-columns: minmax(0, 1fr) 49px 49px;
+    gap: 4px;
+    padding: 8px 5px;
+  }
+}
