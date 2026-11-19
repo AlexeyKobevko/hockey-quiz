@@ -21,9 +21,24 @@ const app = element('#app'),
   closeRoom = element('#closeRoom'),
   audioToggle = element('#audioToggle'),
   audioDebugPanel = element('#audioDebugPanel'),
-  audioDebugStatus = element('#audioDebugStatus');
+  audioDebugStatus = element('#audioDebugStatus'),
+  audioDebugLog = element('#audioDebugLog');
 const audioDebugMode = new URLSearchParams(location.search).get('audioDebug') === '1';
-const soundEffects = createSoundEffects();
+const debugStartedAt = performance.now();
+const debugLines: string[] = [];
+function debugLog(category: string, message: string) {
+  if (!audioDebugMode) return;
+  const now = new Date();
+  const time = `${now.toTimeString().slice(0, 8)}.${String(now.getMilliseconds()).padStart(3, '0')}`;
+  const elapsed = Math.round(performance.now() - debugStartedAt);
+  const nearBottom = audioDebugLog.scrollHeight - audioDebugLog.scrollTop - audioDebugLog.clientHeight < 48;
+  debugLines.push(`[${time}] +${elapsed}ms [${category}] ${message}`);
+  if (debugLines.length > 200) debugLines.shift();
+  audioDebugLog.textContent = debugLines.join('\n');
+  if (nearBottom) audioDebugLog.scrollTop = audioDebugLog.scrollHeight;
+}
+const soundEffects = createSoundEffects((message) => debugLog('AUDIO', message));
+debugLog('UI', 'Audio diagnostics enabled');
 const store = createSessionStore(
   import.meta.env.DEV,
   location.search,
@@ -125,9 +140,16 @@ function forget(message = '') {
 }
 const sync = createSync({
   session: () => auth,
-  status: setStatus,
-  ended: forget,
+  status: (value) => {
+    debugLog('SSE', `connection=${value ? 'online' : 'offline'}`);
+    setStatus(value);
+  },
+  ended: (message) => {
+    debugLog('SSE', 'session ended');
+    forget(message);
+  },
   error: (message) => {
+    debugLog('SSE', `error ${message}`);
     syncError = message;
     render();
   },
@@ -135,7 +157,10 @@ const sync = createSync({
     if (state && next.code === state.code && next.version < state.version) return;
     const oldIndex = state?.index,
       oldPhase = state?.phase,
+      oldVersion = state?.version,
       cue = cueForTransition(state, next);
+    debugLog('SSE', `snapshot v${oldVersion ?? '-'} → v${next.version} ${oldPhase ?? '?'}[${oldIndex ?? '-'}] → ${next.phase}[${next.index}] role=${next.role}`);
+    debugLog('CUE', `cue=${cue ?? 'none'}`);
     state = next;
     syncError = '';
     render();
@@ -145,7 +170,7 @@ const sync = createSync({
         `cue: ${cue ?? 'нет'}; AudioContext: ${soundEffects.contextState}`;
     }
     if (cue) {
-      void soundEffects.play(cue).then((result) => {
+      void soundEffects.play(cue, 'sse').then((result) => {
         if (audioDebugMode && next.role === 'player')
           audioDebugStatus.textContent =
             `${cue}: ${result} (не гарантирует слышимый звук); AudioContext: ${soundEffects.contextState}`;
@@ -212,10 +237,42 @@ function enterSession(value: Session) {
   void sync.connect();
 }
 async function act(action: string) {
+  if (action === 'audio-clear-logs' && audioDebugMode && auth?.role === 'player') {
+    debugLines.length = 0;
+    audioDebugLog.textContent = '';
+    audioDebugStatus.textContent = 'Журнал очищен';
+    return;
+  }
+  if (action === 'audio-copy-logs' && audioDebugMode && auth?.role === 'player') {
+    const content = debugLines.join('\n');
+    try {
+      await navigator.clipboard.writeText(content);
+      audioDebugStatus.textContent = 'Журнал скопирован';
+    } catch {
+      prompt('Скопируй журнал:', content);
+    }
+    return;
+  }
+  if (action === 'audio-test-delay' && audioDebugMode && auth?.role === 'player') {
+    const started = performance.now();
+    debugLog('TIMER', 'scheduled period-end in 3000ms');
+    setTimeout(() => {
+      if (auth?.role !== 'player') {
+        debugLog('TIMER', 'cancelled: player session no longer active');
+        return;
+      }
+      debugLog('TIMER', `fired after ${Math.round(performance.now() - started)}ms`);
+      void soundEffects.play('period-end', 'timer-3s').then((result) => {
+        audioDebugStatus.textContent = `period-end (timer): ${result}; AudioContext: ${soundEffects.contextState}`;
+      });
+    }, 3000);
+    return;
+  }
   if (action === 'audio-test-siren' || action === 'audio-test-whistle') {
     if (!audioDebugMode || auth?.role !== 'player') return;
     const cue = action === 'audio-test-siren' ? 'period-end' : 'period-start';
-    const result = await soundEffects.play(cue);
+    debugLog('UI', `manual test ${cue}`);
+    const result = await soundEffects.play(cue, 'manual-test');
     audioDebugStatus.textContent =
       `${cue}: ${result}; AudioContext: ${soundEffects.contextState}`;
     return;
@@ -224,7 +281,7 @@ async function act(action: string) {
     if (auth?.role !== 'player') return;
     if (soundEffects.enabled) soundEffects.disable();
     else if (await soundEffects.enable()) {
-      const result = await soundEffects.play('puck-hit');
+      const result = await soundEffects.play('puck-hit', 'enable-feedback');
       if (audioDebugMode)
         audioDebugStatus.textContent = `puck-hit: ${result}; AudioContext: ${soundEffects.contextState}`;
     }
@@ -366,23 +423,28 @@ window.addEventListener(
   { passive: true },
 );
 window.addEventListener('pageshow', () => {
+  debugLog('PAGE', 'pageshow');
   if (auth && !sync.active) void sync.connect();
 });
 window.addEventListener('pagehide', () => {
-  soundEffects.stop();
+  debugLog('PAGE', 'pagehide');
+  soundEffects.stop('pagehide');
   sync.stop();
   clearTimeout(glassScrollTimer);
 });
 window.addEventListener('online', () => {
+  debugLog('NETWORK', 'online');
   void sync.connect();
 });
 window.addEventListener('offline', () => {
+  debugLog('NETWORK', 'offline');
   sync.stop();
   setStatus(false);
 });
 document.addEventListener('visibilitychange', () => {
+  debugLog('PAGE', `visibility=${document.visibilityState}`);
   if (document.hidden) {
-    soundEffects.stop();
+    soundEffects.stop('visibility-hidden');
     sync.stop();
     setStatus(false);
   } else if (auth) void sync.connect();

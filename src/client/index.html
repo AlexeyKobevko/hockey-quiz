@@ -49,7 +49,11 @@
         <div id="audioDebugPanel" class="audio-debug" hidden>
           <button data-action="audio-test-siren" type="button">🔊 Тест сирены</button>
           <button data-action="audio-test-whistle" type="button">Свисток</button>
+          <button data-action="audio-test-delay" type="button">Сирена через 3 секунды</button>
+          <button data-action="audio-copy-logs" type="button">Скопировать логи</button>
+          <button data-action="audio-clear-logs" type="button">Очистить логи</button>
           <output id="audioDebugStatus" aria-live="polite">Включи звук для проверки</output>
+          <pre id="audioDebugLog" class="audio-debug-log" role="log" aria-live="off" tabindex="0"></pre>
         </div>
       </div>
       <main id="app" aria-live="polite">
