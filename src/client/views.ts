@@ -1,5 +1,6 @@
 import type { GameSnapshot, Session, VisualChoice } from '../shared/contracts.js';
 import { rules as hockeyRules } from '../shared/content.js';
+import { quizPrizeFor, bingoPrizeFor } from './prizes.js';
 export type Tab = 'game' | 'rules' | 'bingo';
 export interface ViewContext {
   auth: Session | null;
@@ -140,7 +141,20 @@ export function renderView(context: ViewContext): string {
       a.score === b.score
         ? 'Боевая ничья! 🤝'
         : `${esc(a.score > b.score ? a.name : b.name)} — чемпионка!`;
-    return `${derby()}<div class="panel center victory"><div class="celebration" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => `<i style="--x:${7 + i * 8}%;--c:${i % 2 ? '#8fcfff' : '#ff8da5'};--delay:${(i % 4) * 0.08}s"></i>`).join('')}</div><div class="bigemoji">🏆</div><div class="eyebrow">Финальная сирена</div><h1 style="font-size:38px">Матч окончен!</h1><div class="podium">${a.score} : ${b.score}</div><h2>${name}</h2><p>Теперь можно ехать на дерби и кричать «СУДЬЯ, ТЫ ЧЕГО?!» — иногда даже по делу. 😁</p>${btn('🎯 Хоккейное бинго на арене', 'bingo', 'secondary')}${isHost() ? `<div style="height:12px"></div>${btn('🔁 Реванш', 'restart', 'ghost')}` : ''}</div>${errorHTML()}`;
+    const prizeCard = (title: string, description: string, kind: string) =>
+      `<section class="prize-card prize-${kind}" role="status"><h3>${esc(title)}</h3><p>${esc(description)}</p></section>`;
+    const prize = isHost()
+      ? `<div class="prize-results"><div class="eyebrow">Награды участниц</div>${state.players.map((player) => {
+          const message = quizPrizeFor(state.players, player.id);
+          return message
+            ? `<div class="prize-host-row"><strong>${esc(player.name)}</strong>${prizeCard(message.title, message.description, message.kind)}</div>`
+            : '';
+        }).join('')}</div>`
+      : (() => {
+          const message = state.selfId ? quizPrizeFor(state.players, state.selfId) : null;
+          return message ? prizeCard(message.title, message.description, message.kind) : '';
+        })();
+    return `${derby()}<div class="panel center victory"><div class="celebration" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => `<i style="--x:${7 + i * 8}%;--c:${i % 2 ? '#8fcfff' : '#ff8da5'};--delay:${(i % 4) * 0.08}s"></i>`).join('')}</div><div class="bigemoji">🏆</div><div class="eyebrow">Финальная сирена</div><h1 style="font-size:38px">Матч окончен!</h1><div class="podium">${a.score} : ${b.score}</div><h2>${name}</h2><p>Теперь можно ехать на дерби и кричать «СУДЬЯ, ТЫ ЧЕГО?!» — иногда даже по делу. 😁</p>${prize}${btn('🎯 Хоккейное бинго на арене', 'bingo', 'secondary')}${isHost() ? `<div style="height:12px"></div>${btn('🔁 Реванш', 'restart', 'ghost')}` : ''}</div>${errorHTML()}`;
   }
   function bingoScreen() {
     const current = requireState();
@@ -162,6 +176,23 @@ export function renderView(context: ViewContext): string {
     const summary = `<div class="bingo-totals" aria-label="Счёт бинго">${players.map((p) =>
       `<div class="bingo-total"><strong>${esc(p.name)}</strong><span>${p.bingo.length} / ${current.missions.length}</span></div>`
     ).join('')}</div>`;
+    const prizeCard = (title: string, description: string, kind: string) =>
+      `<section class="prize-card prize-${kind}" role="status"><h3>${esc(title)}</h3><p>${esc(description)}</p></section>`;
+    const bingoPrize = closed
+      ? isHost()
+        ? `<div class="prize-results"><div class="eyebrow">Секретный трофей · информация ведущему</div>${players.map((player) => {
+            const message = bingoPrizeFor(players, player.id);
+            return message
+              ? `<div class="prize-host-row"><strong>${esc(player.name)}</strong>${prizeCard(message.title, message.description, message.kind)}</div>`
+              : '';
+          }).join('')}<p class="note">Вручить победительнице коллекционную банкноту ЦСКА в конверте. При ничьей — обеим. Не раскрывать приз участницам до вручения.</p></div>`
+        : (() => {
+            const message = current.selfId ? bingoPrizeFor(players, current.selfId) : null;
+            return message ? prizeCard(message.title, message.description, message.kind) : '';
+          })()
+      : isHost()
+        ? '<p class="prize-teaser">🎁 Секретный приз: коллекционная банкнота ЦСКА (при ничьей — обеим). Девушкам не раскрывать!</p>'
+        : '<p class="prize-teaser">🎁 СЕКРЕТНЫЙ ПРИЗ ждёт победительницу бинго! Что внутри — узнаешь только после финальной сирены. 🤫</p>';
     const final = closed
       ? `<div class="feedback" role="status"><h3>🏆 ${winner}</h3><p>Итоги бинго зафиксированы ведущим. Изменить отметки уже нельзя.</p></div>`
       : '';
@@ -169,9 +200,9 @@ export function renderView(context: ViewContext): string {
       const matrix = current.missions.map((m, i) => `<div class="bingo-host-row"><div class="bingo-host-task">${m.icon} ${esc(m.title)}</div>${players.map((p) =>
         `<span class="bingo-host-mark" aria-label="${esc(p.name)}: ${p.bingo.includes(i) ? 'выполнено' : 'не выполнено'}">${p.bingo.includes(i) ? '✓' : '—'}</span>`
       ).join('')}</div>`).join('');
-      return intro + `<div class="panel"><div class="eyebrow">${closed ? 'Финальные результаты' : 'Живой прогресс участниц'}</div><h2>${title}</h2><p>${closed ? 'Результаты можно посмотреть и обсудить после матча.' : 'Отметки обновляются автоматически. После финальной сирены останови бинго — результаты будут зафиксированы.'}</p>${summary}<div class="bingo-host-grid"><div class="bingo-host-row bingo-host-heading"><span>Событие</span>${players.map((p) => `<span title="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>${matrix}</div>${final}${!closed ? `<div style="height:16px"></div>${btn('🏁 Завершить бинго и показать итоги', 'finish-bingo', 'primary')}` : ''}</div>${errorHTML()}`;
+      return intro + `<div class="panel"><div class="eyebrow">${closed ? 'Финальные результаты' : 'Живой прогресс участниц'}</div><h2>${title}</h2><p>${closed ? 'Результаты можно посмотреть и обсудить после матча.' : 'Отметки обновляются автоматически. После финальной сирены останови бинго — результаты будут зафиксированы.'}</p>${summary}<div class="bingo-host-grid"><div class="bingo-host-row bingo-host-heading"><span>Событие</span>${players.map((p) => `<span title="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>${matrix}</div>${final}${bingoPrize}${!closed ? `<div style="height:16px"></div>${btn('🏁 Завершить бинго и показать итоги', 'finish-bingo', 'primary')}` : ''}</div>${errorHTML()}`;
     }
-    return intro + `<div class="panel"><div class="meta"><h3>${closed ? 'Мои результаты' : 'Миссии на трибуне'}</h3><span class="counter">${checked.length} / ${current.missions.length}</span></div><div class="progress"><div style="width:${(checked.length * 100) / current.missions.length}%"></div></div>${closed ? summary : ''}<div class="bingo">${current.missions.map((m, i) => `<button class="mission ${checked.includes(i) ? 'done' : ''}" data-mission="${i}" ${closed ? 'disabled' : ''}><div class="ico">${m.icon}</div><div><div class="mtitle">${esc(m.title)}</div><div class="mdesc">${esc(m.desc)}</div></div><div class="mstatus">${checked.includes(i) ? '✓ Выполнено' : '○ Найти на льду'}</div></button>`).join('')}</div>${final}${!closed && checked.length === current.missions.length ? '<div class="feedback"><h3>🏆 Все миссии выполнены!</h3><p>Красно-синий — самый сильный!</p></div>' : ''}</div>${errorHTML()}`;
+    return intro + `<div class="panel"><div class="meta"><h3>${closed ? 'Мои результаты' : 'Миссии на трибуне'}</h3><span class="counter">${checked.length} / ${current.missions.length}</span></div><div class="progress"><div style="width:${(checked.length * 100) / current.missions.length}%"></div></div>${closed ? summary : ''}<div class="bingo">${current.missions.map((m, i) => `<button class="mission ${checked.includes(i) ? 'done' : ''}" data-mission="${i}" ${closed ? 'disabled' : ''}><div class="ico">${m.icon}</div><div><div class="mtitle">${esc(m.title)}</div><div class="mdesc">${esc(m.desc)}</div></div><div class="mstatus">${checked.includes(i) ? '✓ Выполнено' : '○ Найти на льду'}</div></button>`).join('')}</div>${final}${bingoPrize}${!closed && checked.length === current.missions.length ? '<div class="feedback"><h3>🏆 Все миссии выполнены!</h3><p>Красно-синий — самый сильный!</p></div>' : ''}</div>${errorHTML()}`;
   }
   function rulesScreen() {
     return `<div class="screen-intro glass"><div class="eyebrow">Открыто всем · До игры и во время матча</div><h1>Правила<br>с трибуны</h1><p class="lead">17 коротких карточек — всё, что понадобится для 18 вопросов. В викторине за верный ответ +1, а турнирные очки клубов считаются отдельно.</p></div><div class="rules-grid">${hockeyRules.map(({ id, title, text }) => `<article class="rule" id="rule-${id}"><strong>${esc(title)}</strong><p>${esc(text)}</p></article>`).join('')}</div><div class="panel small"><strong>Источники · сезон 2026/27</strong><p>Объяснения упрощены для первого знакомства. В спорном эпизоде решают судьи по полным правилам.</p><a href="https://cska-hockey.ru/club/documents/" target="_blank" rel="noopener noreferrer">Спортивный регламент КХЛ</a> · <a href="https://vks.fhr.ru/docs/93/" target="_blank" rel="noopener noreferrer">Правила ФХР</a></div>`;
