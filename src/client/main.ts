@@ -200,8 +200,8 @@ async function act(action: string) {
   if (action === 'audio') {
     if (auth?.role !== 'player') return;
     if (soundEffects.enabled) soundEffects.disable();
-    else if (!(await soundEffects.enable()))
-      err = 'Не удалось включить звук. Проверь подключение и настройки браузера.';
+    else if (await soundEffects.enable()) soundEffects.play('puck-hit');
+    else err = 'Не удалось включить звук. Проверь подключение и настройки браузера.';
     render();
     return;
   }
