@@ -68,10 +68,18 @@ test('Три телефона: полный матч, замена, reconnect, �
     await a.locator('[data-mission="0"]').click();
     await expect(a.locator('.mission.done')).toHaveCount(1);
     await expect(b.locator('.mission.done')).toHaveCount(0);
+    await h.page.locator('[data-tab=bingo]').click();
+    await expect(h.page.locator('.bingo-host-row').nth(1).locator('.bingo-host-mark')).toHaveText(['✓', '—']);
+    await expect(h.page.locator('.bingo-total span')).toHaveText(['1 / 8', '0 / 8']);
+    await h.page.locator('[data-action=finish-bingo]').click();
+    await expect(a.locator('.mission:disabled')).toHaveCount(8);
+    await expect(b.locator('.mission:disabled')).toHaveCount(8);
+    await expect(h.page.locator('.feedback')).toContainText('победительница бинго');
     await a.reload();
     await ready(a);
     await a.locator('[data-tab=bingo]').click();
     await expect(a.locator('.mission.done')).toHaveCount(1);
+    await h.page.locator('[data-tab=game]').click();
     await h.page.locator('[data-action=restart]').click();
     await expect(h.page.locator('.hugecode')).toHaveText(h.code);
     await h.page.locator('[data-action=start]').click();
