@@ -307,6 +307,11 @@ async function act(action: string) {
       forget('Участие забыто на этом устройстве. Ведущий может освободить слот в лобби.');
     return;
   }
+  if (action === 'finish-bingo') {
+    if (!confirm('Завершить бинго после финальной сирены? Отметки обеих участниц будут зафиксированы.')) return;
+    await request('finish-bingo');
+    return;
+  }
   if (action === 'close') {
     if (!confirm('Закрыть комнату для всех? Очки и бинго будут удалены.')) return;
     const value = await request('close');

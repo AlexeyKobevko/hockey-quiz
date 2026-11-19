@@ -5,6 +5,7 @@ import {
   answerQuestion,
   revealQuestion,
   advanceQuestion,
+  finishBingo,
   restartMatch,
   questionAt,
 } from '../src/server/game.js';
@@ -49,12 +50,17 @@ void test('Полный доменный матч: переходы, два пе
   }
   assert.equal(r.phase, 'finished');
   assert.equal(r.index, 18);
+  assert.equal(r.bingoClosed, false);
+  finishBingo(r);
+  assert.equal(r.bingoClosed, true);
+  assert.throws(() => finishBingo(r));
   assert.throws(() => advanceQuestion(r));
   a.bingo = [0];
   restartMatch(r, 'next-match');
   assert.equal(r.phase, 'lobby');
   assert.equal(a.score, 0);
   assert.deepEqual(a.bingo, []);
+  assert.equal(r.bingoClosed, false);
   assert.equal(r.matchId, 'next-match');
 });
 void test('Принудительное раскрытие, ничья и недопустимые переходы', () => {

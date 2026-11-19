@@ -11,6 +11,7 @@ void test('HTTP: полный матч, роли, 18 вопросов, два п
   assert.equal((await f.raw('join', { code: h.code, name: 'Третья' })).status, 409);
   assert.equal((await f.post('start', a)).status, 403);
   assert.equal((await f.post('start', h)).status, 200);
+  assert.equal((await f.post('bingo', a, { mission: 0 })).status, 409);
   assert.equal((await f.raw('join', { code: h.code, name: 'Поздняя' })).status, 409);
   for (let i = 0; i < 18; i++) {
     const q = questions[i];
@@ -42,10 +43,19 @@ void test('HTTP: полный матч, роли, 18 вопросов, два п
   assert.deepEqual((await f.state(b)).bingo, []);
   await f.post('bingo', a, { mission: 3 });
   assert.deepEqual((await f.state(a)).bingo, []);
+  assert.equal((await f.post('bingo', a, { mission: 3 })).status, 200);
   const before = await f.state(h);
+  assert.deepEqual(before.players[0]?.bingo, [3]);
+  assert.equal(before.bingoClosed, false);
+  assert.equal((await f.post('finish-bingo', a)).status, 403);
+  assert.equal((await f.post('finish-bingo', h)).status, 200);
+  assert.equal((await f.state(a)).bingoClosed, true);
+  assert.equal((await f.post('bingo', a, { mission: 0 })).status, 409);
+  assert.equal((await f.post('finish-bingo', h)).status, 409);
   await f.post('restart', h);
   const after = await f.state(h);
   assert.equal(after.phase, 'lobby');
+  assert.equal(after.bingoClosed, false);
   assert.notEqual(after.matchId, before.matchId);
   assert.ok(after.version > before.version);
   assert.deepEqual(
@@ -189,7 +199,7 @@ void test('SSE: только ведущий закрывает комнату и
   assert.equal(f.hub.clientsCount, 0);
   assert.equal(f.rooms.size, 1);
 });
-void test('TTL: лобби 30 минут, отключённая игра 2 часа, финал 30 минут', async (t) => {
+void test('TTL: лобби 30 минут, отключённая игра 2 часа, бинго 8 часов, итоги 2 часа', async (t) => {
   let time = 1000;
   const f = await fixture(t, { now: () => time, limits: { creates: 100, requests: 1000 } });
   const empty = await f.session('create');
@@ -227,12 +237,25 @@ void test('TTL: лобби 30 минут, отключённая игра 2 ча
   room.phase = 'finished';
   room.touchedAt = time;
   room.disconnectedAt = time;
-  time += 29 * 60000;
+  time += 3 * 60 * 60000;
   f.cleanupRooms();
-  assert.ok(f.rooms.has(room.code));
-  time += 60000;
+  assert.ok(f.rooms.has(room.code), 'Room must survive the live hockey match with every phone asleep');
+  time += 5 * 60 * 60000;
   f.cleanupRooms();
   assert.ok(!f.rooms.has(room.code));
+  const final = await f.room();
+  const closed = f.rooms.get(final.h.code);
+  assert.ok(closed);
+  closed.phase = 'finished';
+  closed.bingoClosed = true;
+  closed.touchedAt = time;
+  closed.disconnectedAt = time;
+  time += 119 * 60000;
+  f.cleanupRooms();
+  assert.ok(f.rooms.has(closed.code));
+  time += 60000;
+  f.cleanupRooms();
+  assert.ok(!f.rooms.has(closed.code));
 });
 void test('Лимиты: комнаты, запросы, bucket cleanup, SSE и освобождение слота', async (t) => {
   let time = 1;

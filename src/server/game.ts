@@ -17,6 +17,7 @@ export interface GameRoom {
   phase: Phase;
   index: number;
   answers: Record<string, number>;
+  bingoClosed: boolean;
   touchedAt: number;
   disconnectedAt: number;
 }
@@ -84,7 +85,13 @@ export function advanceQuestion(room: GameRoom) {
   } else if (room.phase === 'break') room.phase = 'question';
   else throw new GameError('conflict', 'Сейчас нельзя перейти к следующему вопросу.');
 }
+export function finishBingo(room: GameRoom) {
+  if (room.phase !== 'finished') throw new GameError('conflict', 'Сначала завершите викторину.');
+  if (room.bingoClosed) throw new GameError('conflict', 'Бинго уже завершено.');
+  room.bingoClosed = true;
+}
 export function restartMatch(room: GameRoom, matchId: string) {
+  room.bingoClosed = false;
   room.matchId = matchId;
   room.phase = 'lobby';
   room.index = 0;

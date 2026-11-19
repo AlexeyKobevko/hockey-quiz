@@ -47,6 +47,8 @@ export interface SnapshotBase {
   missions: Mission[];
   rules: Rule[];
   roundComplete: number | null;
+  /** Quiz is finished; host may independently close bingo after the real match. */
+  bingoClosed: boolean;
 }
 export type GameSnapshot = SnapshotBase &
   (
@@ -65,7 +67,7 @@ export interface MatchFields extends AuthFields {
 export interface HostFields extends MatchFields {
   version: number;
 }
-export type HostAction = 'start' | 'reveal' | 'next' | 'restart' | 'kick' | 'close';
+export type HostAction = 'start' | 'reveal' | 'next' | 'restart' | 'kick' | 'close' | 'finish-bingo';
 export type Endpoint = 'create' | 'join' | HostAction | 'answer' | 'bingo';
 export type Command =
   | { kind: 'create' }

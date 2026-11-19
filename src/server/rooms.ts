@@ -6,6 +6,7 @@ import {
   assertMatch,
   assertVersion,
   GameError,
+  finishBingo,
   restartMatch,
   revealQuestion,
   startMatch,
@@ -70,6 +71,7 @@ export function createRoomStore(options: StoreOptions) {
         phase: 'lobby',
         index: 0,
         answers: {},
+        bingoClosed: false,
         touchedAt: now(),
         disconnectedAt: now(),
         clients: new Set(),
@@ -97,7 +99,12 @@ export function createRoomStore(options: StoreOptions) {
       assertMatch(room, command.matchId);
       if (command.kind === 'answer')
         answerQuestion(room, auth.player, command.index, command.answer);
-      else toggleMission(auth.player, command.mission);
+      else {
+        if (room.phase !== 'finished')
+          throw new GameError('conflict', 'Бинго откроется после трёх периодов викторины.');
+        if (room.bingoClosed) throw new GameError('conflict', 'Бинго завершено ведущим.');
+        toggleMission(auth.player, command.mission);
+      }
     } else {
       if (auth.role !== 'host') throw new GameError('forbidden', 'Это действие доступно ведущему.');
       assertMatch(room, command.matchId);
@@ -114,6 +121,9 @@ export function createRoomStore(options: StoreOptions) {
           break;
         case 'restart':
           restartMatch(room, randomId(12));
+          break;
+        case 'finish-bingo':
+          finishBingo(room);
           break;
         case 'kick': {
           if (room.phase !== 'lobby')
@@ -147,7 +157,10 @@ export function createRoomStore(options: StoreOptions) {
       if (
         (room.phase === 'lobby' && idle >= 30 * 60 * 1000) ||
         (!room.clients.size &&
-          disconnected >= (room.phase === 'finished' ? 30 * 60 * 1000 : 2 * 60 * 60 * 1000))
+          disconnected >=
+            (room.phase === 'finished' && !room.bingoClosed
+              ? 8 * 60 * 60 * 1000
+              : 2 * 60 * 60 * 1000))
       )
         deleteRoom(room, 'Комната закрыта после долгого бездействия. Создайте новую игру.');
     }
