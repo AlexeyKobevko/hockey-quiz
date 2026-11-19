@@ -143,8 +143,35 @@ export function renderView(context: ViewContext): string {
     return `${derby()}<div class="panel center victory"><div class="celebration" aria-hidden="true">${Array.from({ length: 12 }, (_, i) => `<i style="--x:${7 + i * 8}%;--c:${i % 2 ? '#8fcfff' : '#ff8da5'};--delay:${(i % 4) * 0.08}s"></i>`).join('')}</div><div class="bigemoji">🏆</div><div class="eyebrow">Финальная сирена</div><h1 style="font-size:38px">Матч окончен!</h1><div class="podium">${a.score} : ${b.score}</div><h2>${name}</h2><p>Теперь можно ехать на дерби и кричать «СУДЬЯ, ТЫ ЧЕГО?!» — иногда даже по делу. 😁</p>${btn('🎯 Хоккейное бинго на арене', 'bingo', 'secondary')}${isHost() ? `<div style="height:12px"></div>${btn('🔁 Реванш', 'restart', 'ghost')}` : ''}</div>${errorHTML()}`;
   }
   function bingoScreen() {
+    const current = requireState();
+    const open = current.phase === 'finished';
+    const closed = current.bingoClosed;
     const checked = me()?.bingo || [];
-    return `<div class="screen-intro glass"><div class="eyebrow">Вторая часть · ВТБ Арена</div><h1>Хоккейное<br>бинго</h1><p class="lead">Лови события на льду во время настоящего дерби. У каждой участницы — собственный список!</p></div><div class="panel"><div class="meta"><h3>Миссии на трибуне</h3><span class="counter">${checked.length} / ${state?.missions?.length || 8}</span></div><div class="progress"><div style="width:${(checked.length * 100) / (state?.missions?.length || 8)}%"></div></div><div class="bingo">${(state?.missions || []).map((m, i) => `<button class="mission ${checked.includes(i) ? 'done' : ''}" data-mission="${i}" ${isHost() ? 'disabled' : ''}><div class="ico">${m.icon}</div><div><div class="mtitle">${esc(m.title)}</div><div class="mdesc">${esc(m.desc)}</div></div><div class="mstatus">${checked.includes(i) ? '✓ Выполнено' : '○ Найти на льду'}</div></button>`).join('')}</div>${isHost() ? '<p class="note">Бинго отмечают участницы на своих телефонах.</p>' : checked.length === 8 ? '<div class="feedback"><h3>🏆 Все миссии выполнены!</h3><p>Красно-синий — самый сильный!</p></div>' : ''}</div>${errorHTML()}`;
+    const players = current.players;
+    const [first, second] = players;
+    const title = closed ? 'Бинго завершено' : 'Бинго на арене';
+    const intro = `<div class="screen-intro glass"><div class="eyebrow">Вторая часть · ВТБ Арена</div><h1>Хоккейное<br>бинго</h1><p class="lead">${closed ? 'Финальная сирена прозвучала! Результаты зафиксированы.' : 'Лови события на льду во время настоящего дерби. У каждой участницы — собственный список!'}</p></div>`;
+    if (!open) return intro +
+      '<div class="panel"><h3>Сначала — три периода викторины</h3><p>Отмечать события можно будет после 18-го вопроса. На арене продолжим игру!</p></div>';
+    const tally = (player: typeof first) => player?.bingo.length ?? 0;
+    const winner = !first || !second
+      ? 'Ожидание игроков'
+      : tally(first) === tally(second)
+        ? 'Ничья в бинго! 🤝'
+        : `${esc(tally(first) > tally(second) ? first.name : second.name)} — победительница бинго! 🏆`;
+    const summary = `<div class="bingo-totals" aria-label="Счёт бинго">${players.map((p) =>
+      `<div class="bingo-total"><strong>${esc(p.name)}</strong><span>${p.bingo.length} / ${current.missions.length}</span></div>`
+    ).join('')}</div>`;
+    const final = closed
+      ? `<div class="feedback" role="status"><h3>🏆 ${winner}</h3><p>Итоги бинго зафиксированы ведущим. Изменить отметки уже нельзя.</p></div>`
+      : '';
+    if (isHost()) {
+      const matrix = current.missions.map((m, i) => `<div class="bingo-host-row"><div class="bingo-host-task">${m.icon} ${esc(m.title)}</div>${players.map((p) =>
+        `<span class="bingo-host-mark" aria-label="${esc(p.name)}: ${p.bingo.includes(i) ? 'выполнено' : 'не выполнено'}">${p.bingo.includes(i) ? '✓' : '—'}</span>`
+      ).join('')}</div>`).join('');
+      return intro + `<div class="panel"><div class="eyebrow">${closed ? 'Финальные результаты' : 'Живой прогресс участниц'}</div><h2>${title}</h2><p>${closed ? 'Результаты можно посмотреть и обсудить после матча.' : 'Отметки обновляются автоматически. После финальной сирены останови бинго — результаты будут зафиксированы.'}</p>${summary}<div class="bingo-host-grid"><div class="bingo-host-row bingo-host-heading"><span>Событие</span>${players.map((p) => `<span title="${esc(p.name)}">${esc(p.name)}</span>`).join('')}</div>${matrix}</div>${final}${!closed ? `<div style="height:16px"></div>${btn('🏁 Завершить бинго и показать итоги', 'finish-bingo', 'primary')}` : ''}</div>${errorHTML()}`;
+    }
+    return intro + `<div class="panel"><div class="meta"><h3>${closed ? 'Мои результаты' : 'Миссии на трибуне'}</h3><span class="counter">${checked.length} / ${current.missions.length}</span></div><div class="progress"><div style="width:${(checked.length * 100) / current.missions.length}%"></div></div>${closed ? summary : ''}<div class="bingo">${current.missions.map((m, i) => `<button class="mission ${checked.includes(i) ? 'done' : ''}" data-mission="${i}" ${closed ? 'disabled' : ''}><div class="ico">${m.icon}</div><div><div class="mtitle">${esc(m.title)}</div><div class="mdesc">${esc(m.desc)}</div></div><div class="mstatus">${checked.includes(i) ? '✓ Выполнено' : '○ Найти на льду'}</div></button>`).join('')}</div>${final}${!closed && checked.length === current.missions.length ? '<div class="feedback"><h3>🏆 Все миссии выполнены!</h3><p>Красно-синий — самый сильный!</p></div>' : ''}</div>${errorHTML()}`;
   }
   function rulesScreen() {
     return `<div class="screen-intro glass"><div class="eyebrow">Открыто всем · До игры и во время матча</div><h1>Правила<br>с трибуны</h1><p class="lead">17 коротких карточек — всё, что понадобится для 18 вопросов. В викторине за верный ответ +1, а турнирные очки клубов считаются отдельно.</p></div><div class="rules-grid">${hockeyRules.map(({ id, title, text }) => `<article class="rule" id="rule-${id}"><strong>${esc(title)}</strong><p>${esc(text)}</p></article>`).join('')}</div><div class="panel small"><strong>Источники · сезон 2026/27</strong><p>Объяснения упрощены для первого знакомства. В спорном эпизоде решают судьи по полным правилам.</p><a href="https://cska-hockey.ru/club/documents/" target="_blank" rel="noopener noreferrer">Спортивный регламент КХЛ</a> · <a href="https://vks.fhr.ru/docs/93/" target="_blank" rel="noopener noreferrer">Правила ФХР</a></div>`;
