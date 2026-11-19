@@ -36,6 +36,7 @@ export function snapshot(room: Room, token: string): GameSnapshot {
     missions,
     rules,
     roundComplete: room.phase === 'break' ? room.index : null,
+    bingoClosed: room.bingoClosed,
   };
   if (room.phase === 'question' || room.phase === 'reveal') {
     const q = questionAt(room.index),
